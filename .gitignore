@@ -1,0 +1,12 @@
+
+gateway/vendor/
+gateway/.env
+usuarios/node_modules/
+notificaciones/node_modules/
+citas/__pycache__/
+citas/.venv/
+historiales/__pycache__/
+historiales/.venv/
+.DS_Store
+*.log
+.env
