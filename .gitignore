@@ -1,12 +1,19 @@
 
 gateway/vendor/
 gateway/.env
+gateway/.env.backup
 usuarios/node_modules/
+usuarios/.env
 notificaciones/node_modules/
+notificaciones/.env
 citas/__pycache__/
 citas/.venv/
+citas/.env
+citas/**/__pycache__/
 historiales/__pycache__/
 historiales/.venv/
+historiales/.env
+historiales/**/__pycache__/
 .DS_Store
 *.log
-.env
+*.pyc

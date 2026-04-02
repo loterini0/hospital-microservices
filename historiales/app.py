@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, request, jsonify
 from dotenv import load_dotenv
 from src.models import db
 from src.routes import records_bp
@@ -15,6 +15,12 @@ app.config["SQLALCHEMY_DATABASE_URI"] = (
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db.init_app(app)
+
+@app.before_request
+def validate_gateway():
+    secret = request.headers.get('X-Gateway-Secret')
+    if secret != os.getenv('GATEWAY_SECRET'):
+        return jsonify({'message': 'Access denied. Use the API Gateway.'}), 403
 
 app.register_blueprint(records_bp, url_prefix="/api/records")
 

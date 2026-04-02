@@ -2,11 +2,13 @@ const express    = require('express');
 const router     = express.Router();
 const controller = require('../controllers/notificationController');
 const { validateCreateNotification } = require('../middlewares/validateNotification');
+const { validateGateway } = require('../middlewares/validateGateway');
+router.use(validateGateway);
 
-router.get('/',                      controller.getNotifications);
-router.get('/user/:user_id',         controller.getNotificationsByUser);
-router.post('/',                     validateCreateNotification, controller.createNotification);
-router.put('/:id/read',              controller.markAsRead);
-router.delete('/:id',                controller.deleteNotification);
+router.get('/',              controller.getNotifications);
+router.get('/user/:user_id', controller.getNotificationsByUser);
+router.post('/',             validateCreateNotification, controller.createNotification);
+router.put('/:id/read',      controller.markAsRead);
+router.delete('/:id',        controller.deleteNotification);
 
 module.exports = router;
