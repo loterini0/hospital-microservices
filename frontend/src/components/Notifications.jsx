@@ -13,16 +13,29 @@ export default function Notifications() {
 
     const loadNotifications = async () => {
         setLoading(true);
-        const res = await api.get('/notifications/');
-        setNotifications(res.data);
+        try {
+            let res;
+            if (user?.role === 'admin') {
+                res = await api.get('/notifications/');
+            } else {
+                res = await api.get(`/notifications/user/${user.id}`);
+            }
+            setNotifications(Array.isArray(res.data) ? res.data : []);
+        } catch (e) {
+            console.error(e);
+        }
         setLoading(false);
     };
 
     const createNotification = async () => {
-        await api.post('/notifications/', { ...form, user_id: parseInt(form.user_id) });
-        setShowForm(false);
-        setForm({ user_id: '', type: 'appointment', message: '' });
-        loadNotifications();
+        try {
+            await api.post('/notifications/', { ...form, user_id: parseInt(form.user_id) });
+            setShowForm(false);
+            setForm({ user_id: '', type: 'appointment', message: '' });
+            loadNotifications();
+        } catch (e) {
+            console.error(e);
+        }
     };
 
     const markAsRead = async (id) => {
@@ -40,9 +53,9 @@ export default function Notifications() {
     const canDelete = user?.role === 'admin';
 
     const typeConfig = {
-        appointment: { label: 'Cita',          bg: '#dbeafe', color: '#1d4ed8' },
-        reminder:    { label: 'Recordatorio',  bg: '#fef9c3', color: '#a16207' },
-        alert:       { label: 'Alerta',        bg: '#fee2e2', color: '#dc2626' },
+        appointment: { label: 'Cita',         bg: '#dbeafe', color: '#1d4ed8' },
+        reminder:    { label: 'Recordatorio', bg: '#fef9c3', color: '#a16207' },
+        alert:       { label: 'Alerta',       bg: '#fee2e2', color: '#dc2626' },
     };
 
     const unread = notifications.filter(n => !n.read).length;
@@ -60,7 +73,9 @@ export default function Notifications() {
                             </span>
                         )}
                     </h1>
-                    <p style={{ color: '#64748b', margin: '4px 0 0', fontSize: 13 }}>Centro de notificaciones del sistema</p>
+                    <p style={{ color: '#64748b', margin: '4px 0 0', fontSize: 13 }}>
+                        {user?.role === 'admin' ? 'Centro de notificaciones del sistema' : 'Sus notificaciones personales'}
+                    </p>
                 </div>
                 {canCreate && (
                     <button onClick={() => setShowForm(!showForm)} style={primaryBtn}>
@@ -121,7 +136,8 @@ export default function Notifications() {
                                 <div>
                                     <p style={{ margin: 0, fontWeight: n.read ? 400 : 600, color: '#0f172a' }}>{n.message}</p>
                                     <p style={{ margin: '4px 0 0', fontSize: 12, color: '#94a3b8' }}>
-                                        Usuario #{n.user_id} · {new Date(n.createdAt).toLocaleDateString('es-CO')}
+                                        {canCreate && `Usuario #${n.user_id} · `}
+                                        {new Date(n.createdAt).toLocaleDateString('es-CO')}
                                     </p>
                                 </div>
                             </div>

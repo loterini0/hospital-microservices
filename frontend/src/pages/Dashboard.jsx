@@ -5,6 +5,7 @@ import Navbar from '../components/Navbar';
 import Users from '../components/Users';
 import Appointments from '../components/Appointments';
 import Records from '../components/Records';
+import Medications from "../components/Medications";
 import Notifications from '../components/Notifications';
 
 export default function Dashboard() {
@@ -22,6 +23,7 @@ export default function Dashboard() {
         appointments:  <Appointments />,
         records:       <Records />,
         notifications: <Notifications />,
+        medications: <Medications />,
     };
 
     return (

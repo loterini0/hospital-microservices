@@ -3,30 +3,49 @@ import api from '../api/config';
 import { useAuth } from '../context/AuthContext';
 
 export default function Records() {
-    const { user }                = useAuth();
-    const [records, setRecords]   = useState([]);
-    const [showForm, setShowForm] = useState(false);
-    const [loading, setLoading]   = useState(true);
-    const [form, setForm]         = useState({ patient_id: '', doctor_id: '', diagnosis: '', prescription: '', notes: '' });
+    const { user }                  = useAuth();
+    const [records, setRecords]     = useState([]);
+    const [users, setUsers]         = useState({});
+    const [showForm, setShowForm]   = useState(false);
+    const [editingId, setEditingId] = useState(null);
+    const [editForm, setEditForm]   = useState({ diagnosis: '', prescription: '', notes: '' });
+    const [loading, setLoading]     = useState(true);
+    const [form, setForm]           = useState({ patient_id: '', doctor_id: '', diagnosis: '', prescription: '', notes: '' });
 
     useEffect(() => { loadRecords(); }, []);
 
     const loadRecords = async () => {
         setLoading(true);
-        const res = await api.get('/records/');
-        setRecords(res.data);
+        try {
+            const res = await api.get('/records/');
+            setRecords(Array.isArray(res.data) ? res.data : []);
+            const usersRes = await api.get('/users/');
+            const usersMap = {};
+            usersRes.data.forEach(u => { usersMap[u.id] = u; });
+            setUsers(usersMap);
+        } catch (e) { console.error(e); }
         setLoading(false);
     };
 
     const createRecord = async () => {
-        await api.post('/records/', {
-            ...form,
-            patient_id: parseInt(form.patient_id),
-            doctor_id:  parseInt(form.doctor_id),
-        });
-        setShowForm(false);
-        setForm({ patient_id: '', doctor_id: '', diagnosis: '', prescription: '', notes: '' });
-        loadRecords();
+        try {
+            await api.post('/records/', {
+                ...form,
+                patient_id: parseInt(form.patient_id),
+                doctor_id:  user?.role === 'doctor' ? user.id : parseInt(form.doctor_id),
+            });
+            setShowForm(false);
+            setForm({ patient_id: '', doctor_id: '', diagnosis: '', prescription: '', notes: '' });
+            loadRecords();
+        } catch (e) { console.error(e); }
+    };
+
+    const updateRecord = async (id) => {
+        try {
+            await api.put(`/records/${id}`, editForm);
+            setEditingId(null);
+            loadRecords();
+        } catch (e) { console.error('Error actualizar historial:', e.response?.data); }
     };
 
     const deleteRecord = async (id) => {
@@ -35,7 +54,19 @@ export default function Records() {
         loadRecords();
     };
 
+    const startEdit = (r) => {
+        setEditingId(r.id);
+        setEditForm({ diagnosis: r.diagnosis, prescription: r.prescription || '', notes: r.notes || '' });
+        setShowForm(false);
+    };
+
     const canCreate = user?.role === 'doctor' || user?.role === 'admin';
+    const isAdmin   = user?.role === 'admin';
+
+    const getName = (id, fallback) => {
+        const u = users[id];
+        return u ? u.name : fallback;
+    };
 
     return (
         <div>
@@ -45,7 +76,7 @@ export default function Records() {
                     <p style={{ color: '#64748b', margin: '4px 0 0', fontSize: 13 }}>Registros médicos y diagnósticos de pacientes</p>
                 </div>
                 {canCreate && (
-                    <button onClick={() => setShowForm(!showForm)} style={primaryBtn}>
+                    <button onClick={() => { setShowForm(!showForm); setEditingId(null); }} style={primaryBtn}>
                         + Nuevo historial
                     </button>
                 )}
@@ -60,11 +91,13 @@ export default function Records() {
                             <input placeholder="ID del paciente" type="number" value={form.patient_id}
                                 onChange={e => setForm({ ...form, patient_id: e.target.value })} style={inputStyle} />
                         </div>
-                        <div>
-                            <label style={labelStyle}>ID Médico</label>
-                            <input placeholder="ID del médico" type="number" value={form.doctor_id}
-                                onChange={e => setForm({ ...form, doctor_id: e.target.value })} style={inputStyle} />
-                        </div>
+                        {isAdmin && (
+                            <div>
+                                <label style={labelStyle}>ID Médico</label>
+                                <input placeholder="ID del médico" type="number" value={form.doctor_id}
+                                    onChange={e => setForm({ ...form, doctor_id: e.target.value })} style={inputStyle} />
+                            </div>
+                        )}
                         <div style={{ gridColumn: 'span 2' }}>
                             <label style={labelStyle}>Diagnóstico</label>
                             <input placeholder="Diagnóstico médico" value={form.diagnosis}
@@ -88,6 +121,33 @@ export default function Records() {
                 </div>
             )}
 
+            {editingId && canCreate && (
+                <div style={{ ...cardStyle, borderLeft: '4px solid #0f4c81' }}>
+                    <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 600, color: '#0f172a' }}>Editar historial #{editingId}</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
+                        <div style={{ gridColumn: 'span 2' }}>
+                            <label style={labelStyle}>Diagnóstico</label>
+                            <input value={editForm.diagnosis}
+                                onChange={e => setEditForm({ ...editForm, diagnosis: e.target.value })} style={inputStyle} />
+                        </div>
+                        <div style={{ gridColumn: 'span 2' }}>
+                            <label style={labelStyle}>Prescripción</label>
+                            <input value={editForm.prescription}
+                                onChange={e => setEditForm({ ...editForm, prescription: e.target.value })} style={inputStyle} />
+                        </div>
+                        <div style={{ gridColumn: 'span 2' }}>
+                            <label style={labelStyle}>Notas clínicas</label>
+                            <input value={editForm.notes}
+                                onChange={e => setEditForm({ ...editForm, notes: e.target.value })} style={inputStyle} />
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                        <button onClick={() => updateRecord(editingId)} style={primaryBtn}>Actualizar</button>
+                        <button onClick={() => setEditingId(null)} style={secondaryBtn}>Cancelar</button>
+                    </div>
+                </div>
+            )}
+
             <div style={cardStyle}>
                 {loading ? (
                     <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>Cargando historiales...</div>
@@ -107,19 +167,28 @@ export default function Records() {
                             {records.map(r => (
                                 <tr key={r.id} style={{ borderBottom: '1px solid #f8fafc' }}>
                                     <td style={tdStyle}><span style={{ color: '#94a3b8', fontSize: 12 }}>#{r.id}</span></td>
-                                    <td style={tdStyle}><span style={{ fontWeight: 500 }}>Paciente {r.patient_id}</span></td>
-                                    <td style={tdStyle}><span style={{ color: '#475569' }}>Dr. {r.doctor_id}</span></td>
+                                    <td style={tdStyle}><span style={{ fontWeight: 500 }}>{getName(r.patient_id, `Paciente #${r.patient_id}`)}</span></td>
+                                    <td style={tdStyle}><span style={{ color: '#475569' }}>{getName(r.doctor_id, `Dr. #${r.doctor_id}`)}</span></td>
                                     <td style={tdStyle}><span style={{ color: '#0f172a', fontWeight: 500 }}>{r.diagnosis}</span></td>
                                     <td style={tdStyle}><span style={{ color: '#475569' }}>{r.prescription || '—'}</span></td>
                                     <td style={tdStyle}><span style={{ color: '#475569' }}>{r.notes || '—'}</span></td>
                                     <td style={tdStyle}>
-                                        {canCreate && (
-                                            <button onClick={() => deleteRecord(r.id)}
-                                                style={{ color: '#ef4444', background: 'none', border: 'none',
-                                                    cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
-                                                Eliminar
-                                            </button>
-                                        )}
+                                        <div style={{ display: 'flex', gap: 8 }}>
+                                            {canCreate && (
+                                                <button onClick={() => startEdit(r)}
+                                                    style={{ color: '#0f4c81', background: 'none', border: 'none',
+                                                        cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
+                                                    Editar
+                                                </button>
+                                            )}
+                                            {canCreate && (
+                                                <button onClick={() => deleteRecord(r.id)}
+                                                    style={{ color: '#ef4444', background: 'none', border: 'none',
+                                                        cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
+                                                    Eliminar
+                                                </button>
+                                            )}
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

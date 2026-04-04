@@ -3,9 +3,11 @@ import api from '../api/config';
 import { useAuth } from '../context/AuthContext';
 
 export default function Users() {
-    const { user } = useAuth();
+    const { user }                = useAuth();
     const [users, setUsers]       = useState([]);
     const [showForm, setShowForm] = useState(false);
+    const [editingId, setEditingId] = useState(null);
+    const [editForm, setEditForm] = useState({ name: '', phone: '', role: 'patient' });
     const [loading, setLoading]   = useState(true);
     const [form, setForm]         = useState({ name: '', email: '', phone: '', role: 'patient' });
 
@@ -13,22 +15,40 @@ export default function Users() {
 
     const loadUsers = async () => {
         setLoading(true);
-        const res = await api.get('/users/');
-        setUsers(res.data);
+        try {
+            const res = await api.get('/users/');
+            setUsers(res.data);
+        } catch (e) { console.error(e); }
         setLoading(false);
     };
 
     const createUser = async () => {
-        await api.post('/users/', form);
-        setShowForm(false);
-        setForm({ name: '', email: '', phone: '', role: 'patient' });
-        loadUsers();
+        try {
+            await api.post('/users/', form);
+            setShowForm(false);
+            setForm({ name: '', email: '', phone: '', role: 'patient' });
+            loadUsers();
+        } catch (e) { console.error(e); }
+    };
+
+    const updateUser = async (id) => {
+        try {
+            await api.put(`/users/${id}`, editForm);
+            setEditingId(null);
+            loadUsers();
+        } catch (e) { console.error('Error actualizar usuario:', e.response?.data); }
     };
 
     const deleteUser = async (id) => {
         if (!confirm('¿Está seguro de eliminar este usuario?')) return;
         await api.delete(`/users/${id}`);
         loadUsers();
+    };
+
+    const startEdit = (u) => {
+        setEditingId(u.id);
+        setEditForm({ name: u.name, phone: u.phone || '', role: u.role });
+        setShowForm(false);
     };
 
     const roleConfig = {
@@ -44,7 +64,7 @@ export default function Users() {
                     <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', margin: 0 }}>Gestión de usuarios</h1>
                     <p style={{ color: '#64748b', margin: '4px 0 0', fontSize: 13 }}>Administre los usuarios del sistema hospitalario</p>
                 </div>
-                <button onClick={() => setShowForm(!showForm)} style={primaryBtn}>
+                <button onClick={() => { setShowForm(!showForm); setEditingId(null); }} style={primaryBtn}>
                     + Nuevo usuario
                 </button>
             </div>
@@ -80,6 +100,36 @@ export default function Users() {
                     <div style={{ display: 'flex', gap: 8 }}>
                         <button onClick={createUser} style={primaryBtn}>Guardar</button>
                         <button onClick={() => setShowForm(false)} style={secondaryBtn}>Cancelar</button>
+                    </div>
+                </div>
+            )}
+
+            {editingId && (
+                <div style={{ ...cardStyle, borderLeft: '4px solid #0f4c81' }}>
+                    <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 600, color: '#0f172a' }}>Editar usuario #{editingId}</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
+                        <div>
+                            <label style={labelStyle}>Nombre completo</label>
+                            <input value={editForm.name}
+                                onChange={e => setEditForm({ ...editForm, name: e.target.value })} style={inputStyle} />
+                        </div>
+                        <div>
+                            <label style={labelStyle}>Teléfono</label>
+                            <input value={editForm.phone}
+                                onChange={e => setEditForm({ ...editForm, phone: e.target.value })} style={inputStyle} />
+                        </div>
+                        <div>
+                            <label style={labelStyle}>Rol</label>
+                            <select value={editForm.role} onChange={e => setEditForm({ ...editForm, role: e.target.value })} style={inputStyle}>
+                                <option value="patient">Paciente</option>
+                                <option value="doctor">Médico</option>
+                                <option value="admin">Administrador</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                        <button onClick={() => updateUser(editingId)} style={primaryBtn}>Actualizar</button>
+                        <button onClick={() => setEditingId(null)} style={secondaryBtn}>Cancelar</button>
                     </div>
                 </div>
             )}
@@ -121,11 +171,18 @@ export default function Users() {
                                         </span>
                                     </td>
                                     <td style={tdStyle}>
-                                        <button onClick={() => deleteUser(u.id)}
-                                            style={{ color: '#ef4444', background: 'none', border: 'none',
-                                                cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
-                                            Eliminar
-                                        </button>
+                                        <div style={{ display: 'flex', gap: 8 }}>
+                                            <button onClick={() => startEdit(u)}
+                                                style={{ color: '#0f4c81', background: 'none', border: 'none',
+                                                    cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
+                                                Editar
+                                            </button>
+                                            <button onClick={() => deleteUser(u.id)}
+                                                style={{ color: '#ef4444', background: 'none', border: 'none',
+                                                    cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
+                                                Eliminar
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
