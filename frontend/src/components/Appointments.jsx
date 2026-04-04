@@ -51,11 +51,19 @@ export default function Appointments() {
     };
 
     const updateStatus = async (id) => {
-        try {
-            await api.put(`/appointments/${id}`, { status: editStatus });
-            setEditingId(null);
-            loadAppointments();
-        } catch (e) { console.error('Error actualizar estado:', e.response?.data); }
+    try {
+        const appointment = appointments.find(a => a.id === id);
+        await api.put(`/appointments/${id}`, {
+            patient_id: appointment.patient_id,
+            doctor_id:  appointment.doctor_id,
+            date:       appointment.date,
+            time:       appointment.time,
+            reason:     appointment.reason,
+            status:     editStatus,
+        });
+        setEditingId(null);
+        loadAppointments();
+    } catch (e) { console.error('Error actualizar estado:', e.response?.data); }
     };
 
     const deleteAppointment = async (id) => {
