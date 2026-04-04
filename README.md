@@ -274,16 +274,5 @@ Ver [docs/endpoints.md](docs/endpoints.md)
 
 ## Diagrama de arquitectura
 
-Ver [docs/architecture.drawio](docs/architecture.drawio)
+Ver [docs/architecture.drawio](docs/architecture.drawio.png)
 
-## Estructura del repositorio
-hospital-microservices/
-├── gateway/          # API Gateway - Laravel
-├── usuarios/         # Microservicio Usuarios - Express
-├── citas/            # Microservicio Citas - Django
-├── historiales/      # Microservicio Historiales - Flask
-├── notificaciones/   # Microservicio Notificaciones - Express
-├── medicamentos/     # Microservicio Medicamentos - Express
-├── frontend/         # Interfaz web - React Desarrollo
-├── tests/            # Pruebas de rendimiento - Locust
-└── docs/             # Documentación y diagramas
