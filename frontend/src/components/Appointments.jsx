@@ -5,7 +5,10 @@ import { useAuth } from '../context/AuthContext';
 export default function Appointments() {
     const { user }                        = useAuth();
     const [appointments, setAppointments] = useState([]);
+    const [users, setUsers]               = useState({});
     const [showForm, setShowForm]         = useState(false);
+    const [editingId, setEditingId]       = useState(null);
+    const [editStatus, setEditStatus]     = useState('');
     const [loading, setLoading]           = useState(true);
     const [form, setForm]                 = useState({ patient_id: '', doctor_id: '', date: '', time: '', reason: '' });
 
@@ -13,22 +16,46 @@ export default function Appointments() {
 
     const loadAppointments = async () => {
         setLoading(true);
-        const res = await api.get('/appointments/');
-        setAppointments(res.data);
+        try {
+            let res;
+            if (user?.role === 'patient') {
+                res = await api.get(`/appointments/patient/${user.id}`);
+            } else {
+                res = await api.get('/appointments/');
+            }
+            const appts = Array.isArray(res.data) ? res.data : [];
+            setAppointments(appts);
+            if (user?.role !== 'patient') {
+                const usersRes = await api.get('/users/');
+                const usersMap = {};
+                usersRes.data.forEach(u => { usersMap[u.id] = u; });
+                setUsers(usersMap);
+            }
+        } catch (e) { console.error(e); }
         setLoading(false);
     };
 
     const createAppointment = async () => {
-        await api.post('/appointments/', {
-            ...form,
-            patient_id: parseInt(form.patient_id),
-            doctor_id:  parseInt(form.doctor_id),
-            time:       form.time + ':00',
-            status:     'scheduled',
-        });
-        setShowForm(false);
-        setForm({ patient_id: '', doctor_id: '', date: '', time: '', reason: '' });
-        loadAppointments();
+        try {
+            await api.post('/appointments/', {
+                ...form,
+                patient_id: user?.role === 'patient' ? user.id : parseInt(form.patient_id),
+                doctor_id:  parseInt(form.doctor_id),
+                time:       form.time + ':00',
+                status:     'scheduled',
+            });
+            setShowForm(false);
+            setForm({ patient_id: '', doctor_id: '', date: '', time: '', reason: '' });
+            loadAppointments();
+        } catch (e) { console.error('Error crear cita:', e.response?.data); }
+    };
+
+    const updateStatus = async (id) => {
+        try {
+            await api.put(`/appointments/${id}`, { status: editStatus });
+            setEditingId(null);
+            loadAppointments();
+        } catch (e) { console.error('Error actualizar estado:', e.response?.data); }
     };
 
     const deleteAppointment = async (id) => {
@@ -38,11 +65,18 @@ export default function Appointments() {
     };
 
     const canCreate = ['patient', 'admin'].includes(user?.role);
+    const canEdit   = ['admin', 'doctor'].includes(user?.role);
+    const isAdmin   = user?.role === 'admin';
+
+    const getName = (id, prefix) => {
+        const u = users[id];
+        return u ? u.name : `${prefix} #${id}`;
+    };
 
     const statusConfig = {
         scheduled: { label: 'Programada', bg: '#dbeafe', color: '#1d4ed8' },
-        completed: { label: 'Completada', bg: '#dcfce7', color: '#15803d' },
-        cancelled: { label: 'Cancelada',  bg: '#fee2e2', color: '#dc2626' },
+        completed:  { label: 'Completada', bg: '#dcfce7', color: '#15803d' },
+        cancelled:  { label: 'Cancelada',  bg: '#fee2e2', color: '#dc2626' },
     };
 
     return (
@@ -50,10 +84,12 @@ export default function Appointments() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
                 <div>
                     <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', margin: 0 }}>Citas médicas</h1>
-                    <p style={{ color: '#64748b', margin: '4px 0 0', fontSize: 13 }}>Gestione las citas médicas del sistema</p>
+                    <p style={{ color: '#64748b', margin: '4px 0 0', fontSize: 13 }}>
+                        {user?.role === 'patient' ? 'Sus citas médicas programadas' : 'Gestione las citas médicas del sistema'}
+                    </p>
                 </div>
                 {canCreate && (
-                    <button onClick={() => setShowForm(!showForm)} style={primaryBtn}>
+                    <button onClick={() => { setShowForm(!showForm); setEditingId(null); }} style={primaryBtn}>
                         + Nueva cita
                     </button>
                 )}
@@ -63,11 +99,13 @@ export default function Appointments() {
                 <div style={cardStyle}>
                     <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 600, color: '#0f172a' }}>Registrar nueva cita</h3>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
-                        <div>
-                            <label style={labelStyle}>ID Paciente</label>
-                            <input placeholder="ID del paciente" type="number" value={form.patient_id}
-                                onChange={e => setForm({ ...form, patient_id: e.target.value })} style={inputStyle} />
-                        </div>
+                        {isAdmin && (
+                            <div>
+                                <label style={labelStyle}>ID Paciente</label>
+                                <input placeholder="ID del paciente" type="number" value={form.patient_id}
+                                    onChange={e => setForm({ ...form, patient_id: e.target.value })} style={inputStyle} />
+                            </div>
+                        )}
                         <div>
                             <label style={labelStyle}>ID Médico</label>
                             <input placeholder="ID del médico" type="number" value={form.doctor_id}
@@ -115,25 +153,53 @@ export default function Appointments() {
                             {appointments.map(a => (
                                 <tr key={a.id} style={{ borderBottom: '1px solid #f8fafc' }}>
                                     <td style={tdStyle}><span style={{ color: '#94a3b8', fontSize: 12 }}>#{a.id}</span></td>
-                                    <td style={tdStyle}><span style={{ fontWeight: 500 }}>Paciente {a.patient_id}</span></td>
-                                    <td style={tdStyle}><span style={{ color: '#475569' }}>Dr. {a.doctor_id}</span></td>
+                                    <td style={tdStyle}>
+                                        <span style={{ fontWeight: 500 }}>
+                                            {user?.role === 'patient' ? user.name : getName(a.patient_id, 'Paciente')}
+                                        </span>
+                                    </td>
+                                    <td style={tdStyle}>
+                                        <span style={{ color: '#475569' }}>{getName(a.doctor_id, 'Dr.')}</span>
+                                    </td>
                                     <td style={tdStyle}><span style={{ color: '#475569' }}>{a.date}</span></td>
                                     <td style={tdStyle}><span style={{ color: '#475569' }}>{a.time}</span></td>
                                     <td style={tdStyle}><span style={{ color: '#475569' }}>{a.reason}</span></td>
                                     <td style={tdStyle}>
-                                        <span style={{ background: statusConfig[a.status]?.bg, color: statusConfig[a.status]?.color,
-                                            padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600 }}>
-                                            {statusConfig[a.status]?.label}
-                                        </span>
+                                        {editingId === a.id ? (
+                                            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                                <select value={editStatus} onChange={e => setEditStatus(e.target.value)}
+                                                    style={{ ...inputStyle, padding: '5px 8px', width: 130 }}>
+                                                    <option value="scheduled">Programada</option>
+                                                    <option value="completed">Completada</option>
+                                                    <option value="cancelled">Cancelada</option>
+                                                </select>
+                                                <button onClick={() => updateStatus(a.id)} style={{ ...primaryBtn, padding: '5px 10px', fontSize: 12 }}>OK</button>
+                                                <button onClick={() => setEditingId(null)} style={{ ...secondaryBtn, padding: '5px 10px', fontSize: 12 }}>✕</button>
+                                            </div>
+                                        ) : (
+                                            <span style={{ background: statusConfig[a.status]?.bg, color: statusConfig[a.status]?.color,
+                                                padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600 }}>
+                                                {statusConfig[a.status]?.label}
+                                            </span>
+                                        )}
                                     </td>
                                     <td style={tdStyle}>
-                                        {canCreate && (
-                                            <button onClick={() => deleteAppointment(a.id)}
-                                                style={{ color: '#ef4444', background: 'none', border: 'none',
-                                                    cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
-                                                Cancelar
-                                            </button>
-                                        )}
+                                        <div style={{ display: 'flex', gap: 8 }}>
+                                            {canEdit && editingId !== a.id && (
+                                                <button onClick={() => { setEditingId(a.id); setEditStatus(a.status); }}
+                                                    style={{ color: '#0f4c81', background: 'none', border: 'none',
+                                                        cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
+                                                    Estado
+                                                </button>
+                                            )}
+                                            {canCreate && (
+                                                <button onClick={() => deleteAppointment(a.id)}
+                                                    style={{ color: '#ef4444', background: 'none', border: 'none',
+                                                        cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
+                                                    Cancelar
+                                                </button>
+                                            )}
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

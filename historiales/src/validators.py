@@ -6,6 +6,9 @@ def validate_create_record(data):
         errors.append("doctor_id is required")
     if not data.get("diagnosis"):
         errors.append("diagnosis is required")
+    if data.get("patient_id") and data.get("doctor_id"):
+        if data["patient_id"] == data["doctor_id"]:
+            errors.append("patient_id and doctor_id cannot be the same")
     return errors
 
 def validate_update_record(data):

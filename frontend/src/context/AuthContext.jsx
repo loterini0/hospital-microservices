@@ -5,8 +5,13 @@ const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
     const [token, setToken]       = useState(localStorage.getItem('token'));
-    const [user, setUser]         = useState(JSON.parse(localStorage.getItem('user') || '{}'));
-
+    const [user, setUser] = useState(() => {
+    try {
+        return JSON.parse(localStorage.getItem('user')) || {};
+    } catch {
+        return {};
+    }
+});
     const login = async (email, password) => {
         const res = await api.post('/auth/login', { email, password });
         setToken(res.data.access_token);

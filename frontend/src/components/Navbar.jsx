@@ -15,6 +15,7 @@ export default function Navbar({ active, setActive }) {
         { id: 'appointments',  label: 'Citas',            roles: ['patient', 'doctor', 'admin'] },
         { id: 'records',       label: 'Historiales',      roles: ['doctor', 'admin'] },
         { id: 'notifications', label: 'Notificaciones',   roles: ['patient', 'doctor', 'admin'] },
+        { id: 'medications', label: 'Medicamentos', roles: ['patient', 'doctor', 'admin'] },
     ];
 
     const tabs = allTabs.filter(t => t.roles.includes(user?.role));

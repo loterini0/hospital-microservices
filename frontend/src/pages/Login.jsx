@@ -69,6 +69,7 @@ export default function Login() {
                             { icon: '⚕', text: 'Gestión de citas y pacientes' },
                             { icon: '📋', text: 'Historiales clínicos digitales' },
                             { icon: '🔔', text: 'Notificaciones en tiempo real' },
+                            { icon: '💊', text: 'Inventario de medicamentos' },
                         ].map((item, i) => (
                             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                 <div style={{ width: 36, height: 36, background: 'rgba(255,255,255,0.15)',
