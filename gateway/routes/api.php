@@ -5,6 +5,7 @@ use App\Http\Controllers\UserServiceController;
 use App\Http\Controllers\AppointmentServiceController;
 use App\Http\Controllers\RecordServiceController;
 use App\Http\Controllers\NotificationServiceController;
+use App\Http\Controllers\MedicationServiceController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('auth')->group(function () {
@@ -53,5 +54,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/{id}/read',     [NotificationServiceController::class, 'markAsRead']);
         Route::delete('/{id}',       [NotificationServiceController::class, 'destroy'])->middleware('role:admin');
     });
-
+    Route::prefix('medications')->group(function () {
+    Route::get('/',              [MedicationServiceController::class, 'index']);
+    Route::get('/{id}',         [MedicationServiceController::class, 'show']);
+    Route::post('/',            [MedicationServiceController::class, 'store'])->middleware('role:admin');
+    Route::put('/{id}',         [MedicationServiceController::class, 'update'])->middleware('role:admin');
+    Route::patch('/{id}/stock', [MedicationServiceController::class, 'updateStock'])->middleware('role:admin,doctor');
+    Route::delete('/{id}',      [MedicationServiceController::class, 'destroy'])->middleware('role:admin');
+});
 });
