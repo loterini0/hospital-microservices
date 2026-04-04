@@ -16,7 +16,8 @@ Route::prefix('auth')->group(function () {
 
 Route::middleware('auth:sanctum')->group(function () {
 
-    Route::prefix('users')->group(function () {
+    
+    Route::prefix('users')->middleware('role:admin')->group(function () {
         Route::get('/',        [UserServiceController::class, 'index']);
         Route::get('/{id}',    [UserServiceController::class, 'show']);
         Route::post('/',       [UserServiceController::class, 'store']);
@@ -24,30 +25,33 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{id}', [UserServiceController::class, 'destroy']);
     });
 
+    
     Route::prefix('appointments')->group(function () {
-        Route::get('/',                        [AppointmentServiceController::class, 'index']);
-        Route::get('/{id}',                    [AppointmentServiceController::class, 'show']);
-        Route::get('/patient/{patient_id}',    [AppointmentServiceController::class, 'byPatient']);
-        Route::post('/',                       [AppointmentServiceController::class, 'store']);
-        Route::put('/{id}',                    [AppointmentServiceController::class, 'update']);
-        Route::delete('/{id}',                 [AppointmentServiceController::class, 'destroy']);
+        Route::get('/',                     [AppointmentServiceController::class, 'index']);
+        Route::get('/{id}',                 [AppointmentServiceController::class, 'show']);
+        Route::get('/patient/{patient_id}', [AppointmentServiceController::class, 'byPatient']);
+        Route::post('/',                    [AppointmentServiceController::class, 'store'])->middleware('role:patient,admin');
+        Route::put('/{id}',                 [AppointmentServiceController::class, 'update'])->middleware('role:patient,admin');
+        Route::delete('/{id}',              [AppointmentServiceController::class, 'destroy'])->middleware('role:patient,admin');
     });
 
-    Route::prefix('records')->group(function () {
-        Route::get('/',                        [RecordServiceController::class, 'index']);
-        Route::get('/{id}',                    [RecordServiceController::class, 'show']);
-        Route::get('/patient/{patient_id}',    [RecordServiceController::class, 'byPatient']);
-        Route::post('/',                       [RecordServiceController::class, 'store']);
-        Route::put('/{id}',                    [RecordServiceController::class, 'update']);
-        Route::delete('/{id}',                 [RecordServiceController::class, 'destroy']);
+    
+    Route::prefix('records')->middleware('role:doctor,admin')->group(function () {
+        Route::get('/',                     [RecordServiceController::class, 'index']);
+        Route::get('/{id}',                 [RecordServiceController::class, 'show']);
+        Route::get('/patient/{patient_id}', [RecordServiceController::class, 'byPatient']);
+        Route::post('/',                    [RecordServiceController::class, 'store']);
+        Route::put('/{id}',                 [RecordServiceController::class, 'update']);
+        Route::delete('/{id}',              [RecordServiceController::class, 'destroy']);
     });
 
+    
     Route::prefix('notifications')->group(function () {
-        Route::get('/',                [NotificationServiceController::class, 'index']);
-        Route::get('/user/{user_id}',  [NotificationServiceController::class, 'byUser']);
-        Route::post('/',               [NotificationServiceController::class, 'store']);
-        Route::put('/{id}/read',       [NotificationServiceController::class, 'markAsRead']);
-        Route::delete('/{id}',         [NotificationServiceController::class, 'destroy']);
+        Route::get('/',              [NotificationServiceController::class, 'index']);
+        Route::get('/user/{user_id}',[NotificationServiceController::class, 'byUser']);
+        Route::post('/',             [NotificationServiceController::class, 'store'])->middleware('role:admin');
+        Route::put('/{id}/read',     [NotificationServiceController::class, 'markAsRead']);
+        Route::delete('/{id}',       [NotificationServiceController::class, 'destroy'])->middleware('role:admin');
     });
 
 });
