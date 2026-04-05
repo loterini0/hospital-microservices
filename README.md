@@ -2,10 +2,6 @@
 
 Sistema basado en arquitectura de microservicios para la gestión de pacientes, citas médicas, historiales clínicos, notificaciones y medicamentos.
 
-Usuarios  Citas  Historiales  Notificaciones  Medicamentos
-Express   Django  Flask        Express         Express
-:3001     :8001   :8002        :3002           :3003
-MySQL   PostgreSQL PostgreSQL  MongoDB         MySQL
 
 ## Requisitos previos
 
