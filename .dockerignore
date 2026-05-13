@@ -1,0 +1,32 @@
+# Node modules de todos los servicios
+node_modules/
+usuarios/node_modules/
+notificaciones/node_modules/
+medicamentos/node_modules/
+frontend/node_modules/
+
+# Python
+**/__pycache__/
+**/*.pyc
+**/.venv/
+citas/.venv/
+historiales/.venv/
+
+# Laravel
+gateway/vendor/
+gateway/node_modules/
+gateway/storage/logs/*
+gateway/.env
+
+# Git
+.git/
+.gitignore
+
+# Docker
+docker-compose.yml
+.dockerignore
+
+# Otros
+**/*.log
+docs/
+tests/

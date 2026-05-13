@@ -17,3 +17,7 @@ historiales/**/__pycache__/
 .DS_Store
 *.log
 *.pyc
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+

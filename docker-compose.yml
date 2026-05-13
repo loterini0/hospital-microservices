@@ -1,0 +1,198 @@
+name: medisystem
+
+volumes:
+  mysql-data:
+  postgres-data:
+  mongo-data:
+
+services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: medisystem-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: hospital_gateway
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/db/mysql-init:/docker-entrypoint-initdb.d:ro
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: medisystem-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: hospital_citas
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/db/postgres-init:/docker-entrypoint-initdb.d:ro
+
+  mongodb:
+    image: mongo:7
+    container_name: medisystem-mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: hospital_notificaciones
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  usuarios:
+    build:
+      context: .
+      dockerfile: usuarios/Dockerfile
+    image: medisystem/usuarios:latest
+    container_name: medisystem-usuarios
+    restart: unless-stopped
+    environment:
+      PORT: 3001
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: hospital_usuarios
+      DB_USER: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      GATEWAY_SECRET: ${GATEWAY_SECRET}
+    ports:
+      - "3001:3001"
+    depends_on:
+      - mysql
+
+  citas:
+    build:
+      context: .
+      dockerfile: citas/Dockerfile
+    image: medisystem/citas:latest
+    container_name: medisystem-citas
+    restart: unless-stopped
+    environment:
+      DEBUG: "True"
+      ALLOWED_HOSTS: "*"
+      DB_NAME: hospital_citas
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      GATEWAY_SECRET: ${GATEWAY_SECRET}
+    ports:
+      - "8001:8001"
+    depends_on:
+      - postgres
+
+  historiales:
+    build:
+      context: .
+      dockerfile: historiales/Dockerfile
+    image: medisystem/historiales:latest
+    container_name: medisystem-historiales
+    restart: unless-stopped
+    environment:
+      FLASK_ENV: development
+      FLASK_DEBUG: "1"
+      PORT: 8002
+      DB_NAME: hospital_historiales
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      GATEWAY_SECRET: ${GATEWAY_SECRET}
+    ports:
+      - "8002:8002"
+    depends_on:
+      - postgres
+
+  notificaciones:
+    build:
+      context: .
+      dockerfile: notificaciones/Dockerfile
+    image: medisystem/notificaciones:latest
+    container_name: medisystem-notificaciones
+    restart: unless-stopped
+    environment:
+      PORT: 3002
+      MONGODB_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongodb:27017/hospital_notificaciones?authSource=admin
+      GATEWAY_SECRET: ${GATEWAY_SECRET}
+    ports:
+      - "3002:3002"
+    depends_on:
+      - mongodb
+
+  medicamentos:
+    build:
+      context: .
+      dockerfile: medicamentos/Dockerfile
+    image: medisystem/medicamentos:latest
+    container_name: medisystem-medicamentos
+    restart: unless-stopped
+    environment:
+      PORT: 3003
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: hospital_medicamentos
+      DB_USER: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      GATEWAY_SECRET: ${GATEWAY_SECRET}
+    ports:
+      - "3003:3003"
+    depends_on:
+      - mysql
+
+  gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    image: medisystem/gateway:latest
+    container_name: medisystem-gateway
+    restart: unless-stopped
+    environment:
+      APP_NAME: HospitalGateway
+      APP_ENV: local
+      APP_KEY: ${APP_KEY}
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8000
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: hospital_gateway
+      DB_USERNAME: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      USERS_SERVICE_URL: http://usuarios:3001
+      APPOINTMENTS_SERVICE_URL: http://citas:8001
+      RECORDS_SERVICE_URL: http://historiales:8002
+      NOTIFICATIONS_SERVICE_URL: http://notificaciones:3002
+      MEDICATIONS_SERVICE_URL: http://medicamentos:3003
+      GATEWAY_SECRET: ${GATEWAY_SECRET}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mysql
+      - usuarios
+      - citas
+      - historiales
+      - notificaciones
+      - medicamentos
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    image: medisystem/frontend:latest
+    container_name: medisystem-frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: http://localhost:8000
+    ports:
+      - "5173:5173"
+    depends_on:
+      - gateway

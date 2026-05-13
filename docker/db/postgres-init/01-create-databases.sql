@@ -1,0 +1,7 @@
+CREATE DATABASE hospital_historiales;
+
+\connect hospital_historiales
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO hospital_user;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO hospital_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO hospital_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO hospital_user;
